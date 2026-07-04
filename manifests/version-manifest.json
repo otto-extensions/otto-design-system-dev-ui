@@ -1,0 +1,22 @@
+{
+  "extension": "otto-design-system-dev-ui",
+  "version": "0.1.0",
+  "rulesVersion": "2026.07.04",
+  "compatibility": {
+    "commandServiceLayer": true,
+    "ottoDesignSystem": true
+  },
+  "shipping": {
+    "developerOnly": true,
+    "appBundle": "forbidden"
+  },
+  "surfacePolicy": {
+    "api": "forbidden",
+    "cli": "forbidden",
+    "allowed": [
+      "developer-ui",
+      "command-dispatch",
+      "compiler"
+    ]
+  }
+}

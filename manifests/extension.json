@@ -1,0 +1,23 @@
+{
+  "id": "otto.design.system.dev.ui",
+  "name": "Otto Design System Developer UI",
+  "version": "0.1.0",
+  "schemaVersion": "1.0.0",
+  "description": "Developer-facing configuration UI and compiler trigger for the Otto Design System Authority Layer.",
+  "author": "Otto Systems",
+  "entrypoints": {
+    "index": "src/index.ts",
+    "compiler": "compiler/compile.ts",
+    "ui": "src/dev-ui/app.ts"
+  },
+  "capabilities": [
+    "design-system-dev-ui",
+    "commands",
+    "compiler"
+  ],
+  "developerOnly": true,
+  "surfacePolicy": {
+    "api": "forbidden",
+    "cli": "forbidden"
+  }
+}

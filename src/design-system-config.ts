@@ -1,0 +1,186 @@
+export interface TypographyConfig {
+  families: Record<string, string>;
+  sizes: Record<string, string>;
+  weights: Record<string, number>;
+  lineHeights: Record<string, number>;
+}
+
+export interface MotionConfig {
+  curves: Record<string, string>;
+  durations: Record<string, number>;
+}
+
+export interface SemanticVariant {
+  background: string;
+  text: string;
+  border: string;
+}
+
+export interface LayoutConfig {
+  grid: {
+    columns: number;
+    gutter: string;
+  };
+  container: {
+    maxWidth: string;
+    padding: string;
+  };
+}
+
+export interface BehaviorConfig {
+  focusRing: string;
+  hoverLift: boolean;
+  pressScale: number;
+  disabledOpacity: number;
+}
+
+export interface StateMachinePreset {
+  initial: string;
+  states: string[];
+  transitions: Record<string, string[]>;
+}
+
+export interface DesignSystemConfig {
+  colors: Record<string, string>;
+  spacing: Record<string, string>;
+  typography: TypographyConfig;
+  motion: MotionConfig;
+  elevation: Record<string, string>;
+  radii: Record<string, string>;
+  semanticVariants: Record<string, SemanticVariant>;
+  layout: LayoutConfig;
+  behaviors: BehaviorConfig;
+  stateMachinePresets: Record<string, StateMachinePreset>;
+}
+
+export const defaultDesignSystemConfig: DesignSystemConfig = {
+  colors: {
+    primary: "#1f6feb",
+    secondary: "#0ea5e9",
+    surface: "#ffffff",
+    surfaceSubtle: "#f6f8fa",
+    text: "#1f2328",
+    textMuted: "#57606a",
+    danger: "#d1242f",
+    success: "#1a7f37",
+    warning: "#9a6700"
+  },
+  spacing: {
+    xs: "0.25rem",
+    sm: "0.5rem",
+    md: "0.75rem",
+    lg: "1rem",
+    xl: "1.5rem"
+  },
+  typography: {
+    families: {
+      body: "ui-sans-serif, system-ui, sans-serif",
+      heading: "ui-sans-serif, system-ui, sans-serif",
+      mono: "ui-monospace, SFMono-Regular, Menlo, monospace"
+    },
+    sizes: {
+      xs: "0.75rem",
+      sm: "0.875rem",
+      md: "1rem",
+      lg: "1.125rem",
+      xl: "1.25rem"
+    },
+    weights: {
+      regular: 400,
+      medium: 500,
+      semibold: 600,
+      bold: 700
+    },
+    lineHeights: {
+      tight: 1.2,
+      normal: 1.5,
+      relaxed: 1.65
+    }
+  },
+  motion: {
+    curves: {
+      standard: "cubic-bezier(0.2, 0, 0, 1)",
+      accelerate: "cubic-bezier(0.3, 0, 1, 1)",
+      decelerate: "cubic-bezier(0, 0, 0.2, 1)"
+    },
+    durations: {
+      fast: 120,
+      normal: 180,
+      slow: 260
+    }
+  },
+  elevation: {
+    "0": "none",
+    "1": "0 1px 2px rgba(0, 0, 0, 0.08)",
+    "2": "0 2px 6px rgba(0, 0, 0, 0.12)",
+    "3": "0 8px 20px rgba(0, 0, 0, 0.14)"
+  },
+  radii: {
+    none: "0",
+    sm: "0.25rem",
+    md: "0.5rem",
+    lg: "0.75rem",
+    pill: "9999px"
+  },
+  semanticVariants: {
+    primary: {
+      background: "primary",
+      text: "surface",
+      border: "primary"
+    },
+    danger: {
+      background: "danger",
+      text: "surface",
+      border: "danger"
+    },
+    neutral: {
+      background: "surfaceSubtle",
+      text: "text",
+      border: "textMuted"
+    }
+  },
+  layout: {
+    grid: {
+      columns: 12,
+      gutter: "1rem"
+    },
+    container: {
+      maxWidth: "72rem",
+      padding: "1rem"
+    }
+  },
+  behaviors: {
+    focusRing: "0 0 0 3px rgba(31, 111, 235, 0.35)",
+    hoverLift: true,
+    pressScale: 0.98,
+    disabledOpacity: 0.55
+  },
+  stateMachinePresets: {
+    request: {
+      initial: "idle",
+      states: ["idle", "loading", "success", "error"],
+      transitions: {
+        idle: ["loading"],
+        loading: ["success", "error"],
+        success: ["idle"],
+        error: ["idle", "loading"]
+      }
+    },
+    validation: {
+      initial: "pristine",
+      states: ["pristine", "dirty", "valid", "invalid"],
+      transitions: {
+        pristine: ["dirty"],
+        dirty: ["valid", "invalid"],
+        valid: ["dirty"],
+        invalid: ["dirty"]
+      }
+    }
+  }
+};
+
+export type DesignSystemConfigPatch = Partial<{
+  [K in keyof DesignSystemConfig]: DesignSystemConfig[K] extends object
+    ? Partial<DesignSystemConfig[K]>
+    : DesignSystemConfig[K];
+}>;

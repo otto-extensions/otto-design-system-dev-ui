@@ -1,0 +1,38 @@
+{
+  "commands": [
+    {
+      "name": "designSystem.updateConfig",
+      "description": "Send the current design-system config path to CSL after config updates.",
+      "payload": {
+        "type": "object",
+        "required": ["configPath"],
+        "properties": {
+          "configPath": {
+            "type": "string"
+          }
+        }
+      },
+      "surfaces": {
+        "api": "forbidden",
+        "cli": "forbidden"
+      }
+    },
+    {
+      "name": "designSystem.compile",
+      "description": "Trigger design-system compilation through CSL using configPath.",
+      "payload": {
+        "type": "object",
+        "required": ["configPath"],
+        "properties": {
+          "configPath": {
+            "type": "string"
+          }
+        }
+      },
+      "surfaces": {
+        "api": "forbidden",
+        "cli": "forbidden"
+      }
+    }
+  ]
+}

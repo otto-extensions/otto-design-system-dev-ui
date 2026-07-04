@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Otto Design System Dev UI</title>
+  </head>
+  <body>
+    <main>
+      <h1>Otto Design System Dev UI</h1>
+      <p>Developer-only scaffold for editing design-system.config.json and dispatching CSL commands.</p>
+
+      <section>
+        <h2>Config Domains</h2>
+        <ul>
+          <li>Colors</li>
+          <li>Spacing</li>
+          <li>Typography</li>
+          <li>Motion Curves and Durations</li>
+          <li>Elevation Levels</li>
+          <li>Radii</li>
+          <li>Semantic Variants</li>
+          <li>Layout Rules</li>
+          <li>Behavior Rules</li>
+          <li>State Machine Presets</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Validation</h2>
+        <p>Validation feedback is generated from compiler/validate.ts and shown by the UI controller state.</p>
+      </section>
+
+      <section>
+        <h2>Actions</h2>
+        <button type="button">Save Config</button>
+        <button type="button">Compile Design System</button>
+      </section>
+
+      <section>
+        <h2>Live Preview</h2>
+        <p>Preview data is produced by src/dev-ui/preview.ts from current config values.</p>
+      </section>
+    </main>
+  </body>
+</html>

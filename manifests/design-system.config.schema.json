@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "otto.design.system.dev.ui/design-system.config.schema.json",
+  "title": "Otto Design System Config",
+  "type": "object",
+  "required": [
+    "colors",
+    "spacing",
+    "typography",
+    "motion",
+    "elevation",
+    "radii",
+    "semanticVariants",
+    "layout",
+    "behaviors",
+    "stateMachinePresets"
+  ],
+  "properties": {
+    "colors": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "spacing": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "typography": {
+      "type": "object",
+      "required": ["families", "sizes", "weights", "lineHeights"],
+      "properties": {
+        "families": { "type": "object", "additionalProperties": { "type": "string" } },
+        "sizes": { "type": "object", "additionalProperties": { "type": "string" } },
+        "weights": { "type": "object", "additionalProperties": { "type": "number" } },
+        "lineHeights": { "type": "object", "additionalProperties": { "type": "number" } }
+      }
+    },
+    "motion": {
+      "type": "object",
+      "required": ["curves", "durations"],
+      "properties": {
+        "curves": { "type": "object", "additionalProperties": { "type": "string" } },
+        "durations": { "type": "object", "additionalProperties": { "type": "number" } }
+      }
+    },
+    "elevation": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "radii": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "semanticVariants": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["background", "text", "border"],
+        "properties": {
+          "background": { "type": "string" },
+          "text": { "type": "string" },
+          "border": { "type": "string" }
+        }
+      }
+    },
+    "layout": {
+      "type": "object",
+      "required": ["grid", "container"],
+      "properties": {
+        "grid": {
+          "type": "object",
+          "required": ["columns", "gutter"],
+          "properties": {
+            "columns": { "type": "number", "minimum": 1 },
+            "gutter": { "type": "string" }
+          }
+        },
+        "container": {
+          "type": "object",
+          "required": ["maxWidth", "padding"],
+          "properties": {
+            "maxWidth": { "type": "string" },
+            "padding": { "type": "string" }
+          }
+        }
+      }
+    },
+    "behaviors": {
+      "type": "object",
+      "required": ["focusRing", "hoverLift", "pressScale", "disabledOpacity"],
+      "properties": {
+        "focusRing": { "type": "string" },
+        "hoverLift": { "type": "boolean" },
+        "pressScale": { "type": "number", "minimum": 0.8, "maximum": 1 },
+        "disabledOpacity": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "stateMachinePresets": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["initial", "states", "transitions"],
+        "properties": {
+          "initial": { "type": "string" },
+          "states": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1
+          },
+          "transitions": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}
