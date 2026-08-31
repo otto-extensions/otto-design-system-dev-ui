@@ -1,11 +1,16 @@
 import type {
   DesignSystemCommandAck,
   DesignSystemCompileCommandPayload,
-  DesignSystemUpdateConfigCommandPayload
+  DesignSystemUpdateConfigCommandPayload,
+  OrchestratorSettings,
+  OrchestratorSettingsSetPayload
 } from "./command-definitions.js";
 import {
   DESIGN_SYSTEM_COMPILE_COMMAND,
-  DESIGN_SYSTEM_UPDATE_CONFIG_COMMAND
+  DESIGN_SYSTEM_UPDATE_CONFIG_COMMAND,
+  ORCHESTRATOR_SETTINGS_GET_COMMAND,
+  ORCHESTRATOR_SETTINGS_LIST_COMMAND,
+  ORCHESTRATOR_SETTINGS_SET_COMMAND
 } from "./command-definitions.js";
 import {
   patchDesignSystemConfig,
@@ -30,6 +35,9 @@ export interface DesignSystemDevUiExtension {
   updateConfig(patch: DesignSystemConfigPatch): Promise<DesignSystemConfig>;
   notifyConfigUpdated(): Promise<DesignSystemCommandAck>;
   compileDesignSystem(): Promise<DesignSystemCommandAck>;
+  getOrchestratorSettings(): Promise<OrchestratorSettings>;
+  setOrchestratorSettings(patch: Partial<OrchestratorSettings>): Promise<OrchestratorSettings>;
+  listOrchestratorSettings(): Promise<OrchestratorSettings[]>;
 }
 
 export function createDesignSystemDevUiExtension(
@@ -50,17 +58,38 @@ export function createDesignSystemDevUiExtension(
       options.commandService.run<DesignSystemCompileCommandPayload, DesignSystemCommandAck>(
         DESIGN_SYSTEM_COMPILE_COMMAND,
         { configPath: resolvedConfigPath }
+      ),
+    getOrchestratorSettings: async () =>
+      options.commandService.run<Record<string, never>, OrchestratorSettings>(
+        ORCHESTRATOR_SETTINGS_GET_COMMAND,
+        {}
+      ),
+    setOrchestratorSettings: async (patch) =>
+      options.commandService.run<OrchestratorSettingsSetPayload, OrchestratorSettings>(
+        ORCHESTRATOR_SETTINGS_SET_COMMAND,
+        { patch }
+      ),
+    listOrchestratorSettings: async () =>
+      options.commandService.run<Record<string, never>, OrchestratorSettings[]>(
+        ORCHESTRATOR_SETTINGS_LIST_COMMAND,
+        {}
       )
   };
 }
 
 export {
   DESIGN_SYSTEM_COMPILE_COMMAND,
-  DESIGN_SYSTEM_UPDATE_CONFIG_COMMAND
+  DESIGN_SYSTEM_UPDATE_CONFIG_COMMAND,
+  ORCHESTRATOR_SETTINGS_GET_COMMAND,
+  ORCHESTRATOR_SETTINGS_SET_COMMAND,
+  ORCHESTRATOR_SETTINGS_LIST_COMMAND
 } from "./command-definitions.js";
 export type {
   DesignSystemCommandAck,
   DesignSystemCompileCommandPayload,
-  DesignSystemUpdateConfigCommandPayload
+  DesignSystemUpdateConfigCommandPayload,
+  OrchestratorSettings,
+  OrchestratorSettingsSetPayload
 } from "./command-definitions.js";
 export type { DesignSystemConfig, DesignSystemConfigPatch } from "./design-system-config.js";
+export * from "./orchestrator-settings-contract.js";

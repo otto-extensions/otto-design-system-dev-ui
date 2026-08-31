@@ -1,0 +1,32 @@
+{
+  "enabledPages": {
+    "type": "checkbox-group",
+    "componentId": "enabledPages",
+    "options": ["hallway", "weather", "time"]
+  },
+  "rotationIntervalMs": {
+    "type": "range",
+    "componentId": "rotationIntervalMs",
+    "min": 5000,
+    "max": 120000,
+    "step": 1000
+  },
+  "rotationMode": {
+    "type": "select",
+    "componentId": "rotationMode",
+    "options": ["time", "schedule", "weather", "phase"]
+  },
+  "weatherTriggers": {
+    "severeWeather": { "type": "checkbox", "componentId": "weatherSevere" },
+    "tempThreshold": { "type": "number", "componentId": "weatherTempThreshold" }
+  },
+  "scheduleTriggers": {
+    "classChange": { "type": "checkbox", "componentId": "scheduleClassChange" },
+    "passingPeriod": { "type": "checkbox", "componentId": "schedulePassingPeriod" }
+  },
+  "phaseTriggers": {
+    "chapel": { "type": "checkbox", "componentId": "phaseChapel" },
+    "assembly": { "type": "checkbox", "componentId": "phaseAssembly" },
+    "emergency": { "type": "checkbox", "componentId": "phaseEmergency" }
+  }
+}

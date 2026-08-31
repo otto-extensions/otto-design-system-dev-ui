@@ -44,8 +44,8 @@ test("bridge applies design-system values to the live display config", () => {
 
   const merged = buildDisplayConfigBridge(runtimeConfig, designConfig);
 
-  assert.equal(merged.themes.midnight.colors.accent, "#1f6feb");
-  assert.equal(merged.themes.midnight.colors.surface, "#0f172a");
-  assert.equal(merged.themes.midnight.fonts.body, "Inter, ui-sans-serif, sans-serif");
-  assert.equal(merged.themes.midnight.motion.page, "240ms cubic-bezier(0.2, 0, 0, 1)");
+  assert.equal(merged.themes!.midnight.colors.accent, "#1f6feb");
+  assert.equal(merged.themes!.midnight.colors.surface, "#0f172a");
+  assert.equal(merged.themes!.midnight.fonts.body, "Inter, ui-sans-serif, sans-serif");
+  assert.equal(merged.themes!.midnight.motion.page, "240ms cubic-bezier(0.2, 0, 0, 1)");
 });
