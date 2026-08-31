@@ -7,12 +7,18 @@
     <style>
       :root { font-family: Segoe UI, Helvetica Neue, sans-serif; }
       body { margin: 1.5rem; background: #0b132b; color: #f4f7fb; }
-      main { max-width: 900px; margin: 0 auto; }
+      main { max-width: 1000px; margin: 0 auto; }
       section { margin: 1rem 0; padding: 1rem; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; background: rgba(255,255,255,0.06); }
-      .row { display: flex; gap: 1rem; flex-wrap: wrap; }
-      label { display: block; margin: 0.5rem 0; }
       .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9rem; }
-      button { margin-right: 0.5rem; }
+      .page-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+      .page-card { border: 1px solid rgba(255,255,255,0.22); border-radius: 8px; padding: 10px; background: rgba(0,0,0,0.15); }
+      .row { display: flex; gap: 10px; align-items: center; margin: 6px 0; }
+      .row label { flex: 1; }
+      select, input[type="text"], input[type="url"], textarea, input[type="number"] { width: 100%; }
+      .time-settings { margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.2); }
+      button { margin-right: 0.5rem; margin-top: 8px; }
+      .preview-card { line-height: 1.5; }
+      .preview-highlight { color: #ffd166; font-weight: 600; }
     </style>
   </head>
   <body>
@@ -20,47 +26,45 @@
       <h1>Display Orchestrator Settings</h1>
 
       <section>
-        <h2>Enabled Pages</h2>
-        <label><input id="pageHallway" type="checkbox" value="hallway" /> hallway</label>
-        <label><input id="pageWeather" type="checkbox" value="weather" /> weather</label>
-        <label><input id="pageTime" type="checkbox" value="time" /> time</label>
+        <h2>Display Registry</h2>
+        <div class="row">
+          <label>Select Display
+            <select id="displaySelector"></select>
+          </label>
+          <label>Add Display ID
+            <input id="newDisplayId" type="text" placeholder="gym-lobby" />
+          </label>
+          <button id="addDisplay" type="button">Add Display</button>
+          <button id="deleteDisplay" type="button">Delete Display</button>
+        </div>
+        <div class="row">
+          <label>Share Playlist Source
+            <select id="shareSourceDisplay"></select>
+          </label>
+          <label>Share Playlist Target
+            <select id="shareTargetDisplay"></select>
+          </label>
+          <button id="sharePlaylist" type="button">Share Playlist With Another Display</button>
+        </div>
+        <div id="displayUrls" class="mono"></div>
       </section>
 
       <section>
-        <h2>Rotation Controls</h2>
-        <label>
-          Rotation Interval
-          <input id="rotationIntervalMs" type="range" min="5000" max="120000" step="1000" />
-          <span id="rotation-value" class="mono"></span>
-        </label>
-        <label>
-          Rotation Mode
-          <select id="rotationMode">
-            <option value="time">time</option>
-            <option value="schedule">schedule</option>
-            <option value="weather">weather</option>
-            <option value="phase">phase</option>
-          </select>
-        </label>
+        <h2>Tier Manager</h2>
+        <p class="mono">Tier 0 is locked as Emergency Tier. Drag tiers to reorder remaining priorities.</p>
+        <ul id="tierList" class="mono"></ul>
+        <div class="row">
+          <label>Add Tier
+            <input id="newTierValue" type="number" min="1" step="1" placeholder="6" />
+          </label>
+          <button id="addTier" type="button">Add Tier</button>
+        </div>
       </section>
 
       <section>
-        <h2>Weather Triggers</h2>
-        <label><input id="weatherSevere" type="checkbox" /> severeWeather</label>
-        <label>tempThreshold <input id="weatherTempThreshold" type="number" min="-50" max="140" /></label>
-      </section>
-
-      <section>
-        <h2>Schedule Triggers</h2>
-        <label><input id="scheduleClassChange" type="checkbox" /> classChange</label>
-        <label><input id="schedulePassingPeriod" type="checkbox" /> passingPeriod</label>
-      </section>
-
-      <section>
-        <h2>Phase Triggers</h2>
-        <label><input id="phaseChapel" type="checkbox" /> chapel</label>
-        <label><input id="phaseAssembly" type="checkbox" /> assembly</label>
-        <label><input id="phaseEmergency" type="checkbox" /> emergency</label>
+        <h2>Per-Page Controls</h2>
+        <label><input id="showDeletedPages" type="checkbox" /> Show Deleted Pages</label>
+        <div id="pageSettingsCards" class="page-grid"></div>
       </section>
 
       <section>
@@ -71,6 +75,9 @@
           <select id="newPageType">
             <option value="url">url</option>
             <option value="inline-code">inline-code</option>
+            <option value="time">time</option>
+            <option value="weather">weather</option>
+            <option value="custom">custom</option>
           </select>
         </label>
         <label>URL <input id="newPageUrl" type="url" placeholder="https://example.com/page" /></label>
@@ -81,8 +88,12 @@
       </section>
 
       <section>
+        <h2>Trigger-Aware Preview</h2>
+        <div id="rotationPreviewCard" class="preview-card mono">loading...</div>
+      </section>
+
+      <section>
         <h2>Actions</h2>
-        <button id="saveSettings" type="button">Save Settings</button>
         <button id="refreshSettings" type="button">Refresh</button>
         <button id="downloadSettings" type="button">Download Settings</button>
         <button id="backupPages" type="button">Backup Pages</button>
@@ -91,15 +102,11 @@
       </section>
 
       <section>
-        <h2>Live Rotation Preview</h2>
-        <pre id="rotationPreview" class="mono">loading...</pre>
-      </section>
-
-      <section>
         <h2>Status</h2>
         <pre id="status" class="mono"></pre>
       </section>
     </main>
+    <script type="module" src="./scripts/rotation-preview.js"></script>
     <script type="module" src="./scripts/orchestrator-settings.js"></script>
   </body>
 </html>
