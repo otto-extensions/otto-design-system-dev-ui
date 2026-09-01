@@ -740,6 +740,7 @@ function bindGlobalEvents() {
     const action = event.target.dataset.action;
     const tier = Number(event.target.dataset.tier);
     if (!action || Number.isNaN(tier)) return;
+    if (!['move-tier-up', 'move-tier-down', 'delete-tier'].includes(action)) return;
 
     try {
       const current = [...state.tierList];
