@@ -6,12 +6,18 @@ const shareSourceDisplayEl = document.getElementById('shareSourceDisplay');
 const shareTargetDisplayEl = document.getElementById('shareTargetDisplay');
 const showDeletedToggleEl = document.getElementById('showDeletedPages');
 const displayUrlsEl = document.getElementById('displayUrls');
+const playlistOrderModeEl = document.getElementById('playlistOrderMode');
+const addTierPanelEl = document.getElementById('addTierPanel');
+const newTierNameEl = document.getElementById('newTierName');
 
 const state = {
   displayId: 'hallway',
   settings: null,
   pages: [],
   tierList: [0, 1, 2, 3],
+  tierNames: { 0: 'Emergency' },
+  playlistOrder: 'priority',
+  manualPageOrder: [],
   displays: ['hallway'],
   deletedDisplays: {}
 };
@@ -31,6 +37,86 @@ function escapeHtml(value) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
+}
+
+function normalizeTierNames(rawTierNames, tierList) {
+  const names = { 0: 'Emergency' };
+  const source = rawTierNames && typeof rawTierNames === 'object' ? rawTierNames : {};
+
+  for (const tier of tierList) {
+    const key = String(tier);
+    if (typeof source[key] === 'string' && source[key].trim()) {
+      names[key] = source[key].trim();
+    } else if (tier !== 0) {
+      names[key] = `Tier ${tier}`;
+    }
+  }
+
+  return names;
+}
+
+function tierName(tier) {
+  const key = String(tier);
+  return state.tierNames[key] || (tier === 0 ? 'Emergency' : `Tier ${tier}`);
+}
+
+function normalizeManualOrder(order, pages) {
+  const base = Array.isArray(order) ? order.filter((id) => typeof id === 'string') : [];
+  const pageIds = pages.map((page) => page.id);
+  const known = base.filter((id) => pageIds.includes(id));
+  for (const id of pageIds) {
+    if (!known.includes(id)) known.push(id);
+  }
+  return known;
+}
+
+async function copyText(value) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    await navigator.clipboard.writeText(value);
+    return;
+  }
+
+  const helper = document.createElement('textarea');
+  helper.value = value;
+  helper.setAttribute('readonly', 'readonly');
+  helper.style.position = 'fixed';
+  helper.style.left = '-9999px';
+  document.body.appendChild(helper);
+  helper.select();
+  document.execCommand('copy');
+  document.body.removeChild(helper);
+}
+
+async function fetchDisplayControlContract() {
+  try {
+    const response = await fetch('/content/display-control.contract.json', { cache: 'no-store' });
+    if (!response.ok) return null;
+    return response.json();
+  } catch {
+    return null;
+  }
+}
+
+function applyDevUiContract(contract) {
+  const root = document.documentElement;
+  const colors = contract?.devUi?.colors || {};
+  const typography = contract?.devUi?.typography || {};
+  const radii = contract?.devUi?.radii || {};
+
+  if (colors.bg) root.style.setProperty('--bg', colors.bg);
+  if (colors.panel) root.style.setProperty('--panel', colors.panel);
+  if (colors.border) root.style.setProperty('--border', colors.border);
+  if (colors.text) root.style.setProperty('--text', colors.text);
+  if (colors.muted) root.style.setProperty('--muted', colors.muted);
+  if (colors.accent) root.style.setProperty('--accent', colors.accent);
+  if (colors.warn) root.style.setProperty('--warn', colors.warn);
+  if (colors.ok) root.style.setProperty('--ok', colors.ok);
+
+  if (typography.body) root.style.setProperty('--font-body', typography.body);
+  if (typography.mono) root.style.setProperty('--font-mono', typography.mono);
+
+  if (radii.card) root.style.setProperty('--card-radius', radii.card);
+  if (radii.control) root.style.setProperty('--control-radius', radii.control);
 }
 
 async function csl(command, payload = {}) {
@@ -82,32 +168,35 @@ function renderDisplayRegistry() {
   shareSourceDisplayEl.value = state.displayId;
   shareTargetDisplayEl.value = state.displayId;
 
-  const lines = [];
-  for (const displayId of state.displays) {
-    lines.push(`/display/${displayId}/current`);
-    lines.push(`/display/${displayId}/hallway/current`);
-    lines.push(`/content/settings.json?displayId=${displayId}`);
-  }
+  const origin = window.location.origin;
+  const selected = encodeURIComponent(state.displayId);
+  const urls = [
+    { label: 'PiSignage Display URL', value: `${origin}/display/${selected}` },
+    { label: 'Current Payload URL', value: `${origin}/display/${selected}/hallway/current` },
+    { label: 'Settings URL', value: `${origin}/content/settings.json?displayId=${selected}` }
+  ];
 
-  const deleted = Object.entries(state.deletedDisplays);
-  if (deleted.length > 0) {
-    lines.push('--- deleted displays ---');
-    for (const [id, deletedAt] of deleted) {
-      lines.push(`${id} (deletedAt=${deletedAt})`);
-    }
-  }
+  const deleted = Object.entries(state.deletedDisplays)
+    .map(([id, deletedAt]) => `<div class="mono">${escapeHtml(id)} deleted ${escapeHtml(deletedAt)}</div>`)
+    .join('');
 
-  displayUrlsEl.textContent = lines.join('\n');
+  displayUrlsEl.innerHTML = urls.map((entry) => `
+    <div class="url-row">
+      <strong>${escapeHtml(entry.label)}</strong>
+      <input type="text" readonly value="${escapeHtml(entry.value)}" data-copy-value="${escapeHtml(entry.value)}" />
+      <button class="copy-btn" type="button" data-action="copy-url" data-url="${escapeHtml(entry.value)}">Copy</button>
+    </div>
+  `).join('') + (deleted ? `<div style="margin-top:0.4rem">${deleted}</div>` : '');
 }
 
 function tierBadge(pageSettings) {
   const tier = Number(pageSettings?.tier ?? 1);
-  return `Tier ${tier}`;
+  return `${tierName(tier)} (T${tier})`;
 }
 
 function tierOptions(selectedTier) {
   const values = Array.from(new Set([0, ...state.tierList])).sort((a, b) => a - b);
-  return values.map((tier) => `<option value="${tier}" ${tier === selectedTier ? 'selected' : ''}>Tier ${tier}</option>`).join('');
+  return values.map((tier) => `<option value="${tier}" ${tier === selectedTier ? 'selected' : ''}>${escapeHtml(tierName(tier))} (T${tier})</option>`).join('');
 }
 
 function triggerSection(page, settings) {
@@ -225,14 +314,20 @@ function weatherSettingsSection(page, settings) {
 
 function customSettingsSection(page, settings) {
   const custom = settings.customSettings || { inlineCode: '', url: '', assetFolder: '' };
+  const inlineCode = String(custom.inlineCode || '');
+  const preview = inlineCode.length > 80 ? `${inlineCode.slice(0, 80)}...` : inlineCode;
   return `
-    <details open>
+    <details>
       <summary>Custom Controls</summary>
       <label>URL
         <input id="${pageControlId(page.id, 'custom-url')}" type="url" value="${escapeHtml(custom.url || '')}" placeholder="https://example.com/custom" />
       </label>
       <label>Inline Code
-        <textarea id="${pageControlId(page.id, 'custom-inline')}" rows="5" class="mono">${escapeHtml(custom.inlineCode || '')}</textarea>
+        <div class="mono">${escapeHtml(preview || '(no inline code set)')}</div>
+        <details>
+          <summary>Edit Inline Code</summary>
+          <textarea id="${pageControlId(page.id, 'custom-inline')}" rows="7" class="mono">${escapeHtml(inlineCode)}</textarea>
+        </details>
       </label>
       <label>Asset Folder
         <input id="${pageControlId(page.id, 'custom-assets')}" type="text" value="${escapeHtml(custom.assetFolder || '')}" placeholder="/content/assets" />
@@ -289,27 +384,40 @@ function renderPageCards(pages, settings) {
       }
 
       const lockedTierZero = Number(pageSettings.tier) === 0;
+      const orderIndex = Math.max(0, state.manualPageOrder.indexOf(page.id));
 
       return `
         <article class="page-card" data-page-id="${escapeHtml(page.id)}">
-          <h3>${escapeHtml(page.name || page.id)} ${lockedTierZero ? '• Tier 0 Locked' : ''}</h3>
-          <div class="mono">type: ${escapeHtml(page.type || pageSettings.type || 'custom')} • ${tierBadge(pageSettings)}</div>
-          <label><input id="${pageControlId(page.id, 'enabled')}" type="checkbox" ${pageSettings.enabled ? 'checked' : ''} ${lockedTierZero ? 'disabled' : ''} /> enabled</label>
-          <label>Tier
-            <select id="${pageControlId(page.id, 'tier')}" ${lockedTierZero ? 'disabled' : ''}>
-              ${tierOptions(Number(pageSettings.tier || 1))}
-            </select>
-          </label>
-          <label>Display Duration
-            <input id="${pageControlId(page.id, 'duration')}" type="range" min="5000" max="300000" step="1000" value="${Number(pageSettings.displayDurationMs || 30000)}" />
-            <span id="${pageControlId(page.id, 'durationLabel')}" class="mono">${Math.round(Number(pageSettings.displayDurationMs || 30000) / 1000)}s</span>
-          </label>
-          ${triggerSection(page, pageSettings)}
+          <h3>${escapeHtml(page.name || page.id)}</h3>
+          <div>
+            <span class="pill">${escapeHtml(page.type || pageSettings.type || 'custom')}</span>
+            <span class="pill">${escapeHtml(tierBadge(pageSettings))}</span>
+            ${lockedTierZero ? '<span class="pill locked">Locked Tier 0</span>' : ''}
+          </div>
+          <details open>
+            <summary>Basics</summary>
+            <label><input id="${pageControlId(page.id, 'enabled')}" type="checkbox" ${pageSettings.enabled ? 'checked' : ''} ${lockedTierZero ? 'disabled' : ''} /> Enabled</label>
+            <label>Tier
+              <select id="${pageControlId(page.id, 'tier')}" ${lockedTierZero ? 'disabled' : ''}>
+                ${tierOptions(Number(pageSettings.tier || 1))}
+              </select>
+            </label>
+            <label>Display Duration
+              <input id="${pageControlId(page.id, 'duration')}" type="range" min="5000" max="300000" step="1000" value="${Number(pageSettings.displayDurationMs || 30000)}" />
+              <span id="${pageControlId(page.id, 'durationLabel')}" class="mono">${Math.round(Number(pageSettings.displayDurationMs || 30000) / 1000)}s</span>
+            </label>
+          </details>
+          <details>
+            <summary>Advanced Triggers</summary>
+            ${triggerSection(page, pageSettings)}
+          </details>
           ${(page.type === 'time' || page.id === 'time') ? timeSettingsSection(page, pageSettings) : ''}
-          {(page.type === 'weather' || page.id === 'weather') ? weatherSettingsSection(page, pageSettings) : ''}
-          {(page.type === 'custom' || page.type === 'inline-code' || page.type === 'url') ? customSettingsSection(page, pageSettings) : ''}
-          {(page.type === 'emergency' || page.id === 'emergency') ? emergencySection(page, pageSettings) : ''}
+          ${(page.type === 'weather' || page.id === 'weather') ? weatherSettingsSection(page, pageSettings) : ''}
+          ${(page.type === 'custom' || page.type === 'inline-code' || page.type === 'url') ? customSettingsSection(page, pageSettings) : ''}
+          ${(page.type === 'emergency' || page.id === 'emergency') ? emergencySection(page, pageSettings) : ''}
           <div class="row">
+            <button data-action="move-page-up" data-page-id="${escapeHtml(page.id)}" type="button" ${orderIndex <= 0 ? 'disabled' : ''}>Move Up</button>
+            <button data-action="move-page-down" data-page-id="${escapeHtml(page.id)}" type="button" ${orderIndex >= state.manualPageOrder.length - 1 ? 'disabled' : ''}>Move Down</button>
             <button data-action="save-page" data-page-id="${escapeHtml(page.id)}" type="button">Save Page</button>
             <button data-action="delete-page" data-page-id="${escapeHtml(page.id)}" type="button" ${lockedTierZero ? 'disabled' : ''}>Delete Page</button>
             <button data-action="restore-page" data-page-id="${escapeHtml(page.id)}" type="button">Restore Page</button>
@@ -329,14 +437,54 @@ function renderTierList() {
   tierListEl.innerHTML = tierList.map((tier, index) => {
     const locked = tier === 0;
     return `
-      <li draggable="${locked ? 'false' : 'true'}" data-tier="${tier}" data-index="${index}" class="row">
-        <span class="mono">Tier ${tier}${locked ? ' (Emergency Locked)' : ''}</span>
-        <button data-action="move-tier-up" data-tier="${tier}" type="button" ${locked || index <= 1 ? 'disabled' : ''}>↑</button>
-        <button data-action="move-tier-down" data-tier="${tier}" type="button" ${locked || index === tierList.length - 1 ? 'disabled' : ''}>↓</button>
-        <button data-action="delete-tier" data-tier="${tier}" type="button" ${locked ? 'disabled' : ''}>Delete</button>
+      <li draggable="${locked ? 'false' : 'true'}" data-tier="${tier}" data-index="${index}" class="tier-item">
+        <span class="tier-handle" title="Drag to reorder">::</span>
+        <label>
+          <input data-action="rename-tier" data-tier="${tier}" type="text" value="${escapeHtml(tierName(tier))}" ${locked ? 'disabled' : ''} />
+        </label>
+        <div class="tier-controls">
+          <button data-action="move-tier-up" data-tier="${tier}" type="button" ${locked || index <= 1 ? 'disabled' : ''}>↑</button>
+          <button data-action="move-tier-down" data-tier="${tier}" type="button" ${locked || index === tierList.length - 1 ? 'disabled' : ''}>↓</button>
+          <button data-action="delete-tier" data-tier="${tier}" type="button" ${locked ? 'disabled' : ''}>Delete</button>
+        </div>
       </li>
     `;
   }).join('');
+}
+
+async function saveTierName(tier, name) {
+  if (!Number.isInteger(tier) || tier <= 0) return;
+  const nextTierNames = {
+    ...state.tierNames,
+    [String(tier)]: String(name || '').trim() || `Tier ${tier}`
+  };
+
+  await csl('orchestrator.settings.set', {
+    displayId: state.displayId,
+    patch: {
+      tierNames: nextTierNames
+    }
+  });
+}
+
+function movePageOrder(pageId, direction) {
+  const current = [...state.manualPageOrder];
+  const index = current.indexOf(pageId);
+  if (index < 0) return current;
+  const target = direction === 'up' ? index - 1 : index + 1;
+  if (target < 0 || target >= current.length) return current;
+  const [entry] = current.splice(index, 1);
+  current.splice(target, 0, entry);
+  return current;
+}
+
+async function saveManualPageOrder(order) {
+  await csl('orchestrator.settings.set', {
+    displayId: state.displayId,
+    patch: {
+      manualPageOrder: order
+    }
+  });
 }
 
 function readCheckbox(id) {
@@ -531,6 +679,20 @@ async function changeDisplay(displayId) {
 }
 
 function bindGlobalEvents() {
+  displayUrlsEl.addEventListener('click', async (event) => {
+    const action = event.target.dataset.action;
+    if (action !== 'copy-url') return;
+    const url = event.target.dataset.url;
+    if (!url) return;
+
+    try {
+      await copyText(url);
+      setStatus(`Copied URL for ${state.displayId}`);
+    } catch (error) {
+      setStatus(String(error));
+    }
+  });
+
   cardsEl.addEventListener('input', async (event) => {
     const card = event.target.closest('.page-card');
     if (!card) return;
@@ -555,6 +717,13 @@ function bindGlobalEvents() {
         await savePageCardById(pageId);
         await refreshPreview();
         setStatus(`Saved ${pageId} settings`);
+      }
+      if (action === 'move-page-up' || action === 'move-page-down') {
+        const direction = action === 'move-page-up' ? 'up' : 'down';
+        const nextOrder = movePageOrder(pageId, direction);
+        await saveManualPageOrder(nextOrder);
+        await refreshAll();
+        setStatus(`Updated order for ${pageId}`);
       }
       if (action === 'delete-page') {
         await deletePage(pageId);
@@ -592,10 +761,25 @@ function bindGlobalEvents() {
 
       if (action === 'delete-tier' && tier !== 0) {
         await setTierListPatch({ deleteTier: tier, fallbackTier: 1 });
+        const nextNames = { ...state.tierNames };
+        delete nextNames[String(tier)];
+        await csl('orchestrator.settings.set', { displayId: state.displayId, patch: { tierNames: nextNames } });
       }
 
       await refreshAll();
-      setStatus(`Tier operation complete for tier ${tier}`);
+      setStatus(`Tier operation complete for ${tierName(tier)}`);
+    } catch (error) {
+      setStatus(String(error));
+    }
+  });
+
+  tierListEl.addEventListener('change', async (event) => {
+    if (event.target.dataset.action !== 'rename-tier') return;
+    const tier = Number(event.target.dataset.tier);
+    try {
+      await saveTierName(tier, event.target.value);
+      await refreshAll();
+      setStatus(`Tier name saved`);
     } catch (error) {
       setStatus(String(error));
     }
@@ -604,20 +788,29 @@ function bindGlobalEvents() {
   tierListEl.addEventListener('dragstart', (event) => {
     const li = event.target.closest('li[data-tier]');
     if (!li) return;
+    if (Number(li.dataset.tier) === 0) return;
     event.dataTransfer?.setData('text/plain', li.dataset.tier);
+    event.dataTransfer.effectAllowed = 'move';
   });
 
   tierListEl.addEventListener('dragover', (event) => {
     event.preventDefault();
+    const target = event.target.closest('li[data-tier]');
+    tierListEl.querySelectorAll('li[data-tier]').forEach((item) => item.classList.remove('drag-over'));
+    if (target) {
+      target.classList.add('drag-over');
+    }
   });
 
   tierListEl.addEventListener('drop', async (event) => {
     event.preventDefault();
+    tierListEl.querySelectorAll('li[data-tier]').forEach((item) => item.classList.remove('drag-over'));
     const sourceTier = Number(event.dataTransfer?.getData('text/plain'));
     const targetLi = event.target.closest('li[data-tier]');
-    if (!targetLi || Number.isNaN(sourceTier)) return;
+    if (!targetLi || Number.isNaN(sourceTier) || sourceTier === 0) return;
 
     const targetTier = Number(targetLi.dataset.tier);
+    if (targetTier === 0) return;
     const next = state.tierList.filter((tier) => tier !== sourceTier);
     const targetIndex = next.indexOf(targetTier);
     const insertIndex = Math.max(1, targetIndex);
@@ -644,15 +837,56 @@ function bindGlobalEvents() {
     renderPageCards(state.pages, state.settings);
   });
 
-  document.getElementById('addTier').addEventListener('click', async () => {
+  document.getElementById('openAddTier').addEventListener('click', () => {
+    addTierPanelEl.classList.add('open');
+    newTierNameEl.focus();
+  });
+
+  document.getElementById('cancelAddTier').addEventListener('click', () => {
+    addTierPanelEl.classList.remove('open');
+    newTierNameEl.value = '';
+  });
+
+  document.getElementById('confirmAddTier').addEventListener('click', async () => {
     try {
-      const value = Number(document.getElementById('newTierValue').value);
-      if (!Number.isInteger(value) || value <= 0) {
-        throw new Error('Tier must be an integer > 0');
-      }
-      await setTierListPatch({ addTier: value });
+      const tierNameInput = String(newTierNameEl.value || '').trim();
+      const nextTier = Math.max(0, ...state.tierList) + 1;
+      await setTierListPatch({ addTier: nextTier });
+      await saveTierName(nextTier, tierNameInput || `Tier ${nextTier}`);
+      addTierPanelEl.classList.remove('open');
+      newTierNameEl.value = '';
       await refreshAll();
-      setStatus(`Added tier ${value}`);
+      setStatus(`Added ${tierName(nextTier)}`);
+    } catch (error) {
+      setStatus(String(error));
+    }
+  });
+
+  playlistOrderModeEl.addEventListener('change', async () => {
+    try {
+      const playlistOrder = playlistOrderModeEl.value === 'shuffle' ? 'shuffle' : 'priority';
+      await csl('orchestrator.settings.set', {
+        displayId: state.displayId,
+        patch: { playlistOrder }
+      });
+      await refreshAll();
+      setStatus(`Playlist order set to ${playlistOrder}`);
+    } catch (error) {
+      setStatus(String(error));
+    }
+  });
+
+  document.getElementById('shuffleNow').addEventListener('click', async () => {
+    try {
+      await csl('orchestrator.settings.set', {
+        displayId: state.displayId,
+        patch: {
+          playlistOrder: 'shuffle',
+          shuffleSeed: Date.now()
+        }
+      });
+      await refreshAll();
+      setStatus('Playlist shuffled');
     } catch (error) {
       setStatus(String(error));
     }
@@ -747,6 +981,10 @@ async function refreshAll() {
   state.settings = settings;
   state.pages = pages;
   state.tierList = tierList;
+  state.tierNames = normalizeTierNames(settings.tierNames, tierList);
+  state.playlistOrder = settings.playlistOrder === 'shuffle' ? 'shuffle' : 'priority';
+  state.manualPageOrder = normalizeManualOrder(settings.manualPageOrder, pages);
+  playlistOrderModeEl.value = state.playlistOrder;
 
   renderDisplayRegistry();
   renderTierList();
@@ -758,7 +996,14 @@ async function refreshAll() {
 bindGlobalEvents();
 
 window.addEventListener('load', () => {
-  refreshAll().catch((error) => {
-    setStatus(`Initial load error: ${String(error)}`);
-  });
+  fetchDisplayControlContract()
+    .then((contract) => {
+      if (contract) {
+        applyDevUiContract(contract);
+      }
+      return refreshAll();
+    })
+    .catch((error) => {
+      setStatus(`Initial load error: ${String(error)}`);
+    });
 });

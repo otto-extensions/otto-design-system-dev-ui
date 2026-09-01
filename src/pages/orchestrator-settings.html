@@ -5,28 +5,129 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Display Orchestrator Settings</title>
     <style>
-      :root { font-family: Segoe UI, Helvetica Neue, sans-serif; }
-      body { margin: 1.5rem; background: #0b132b; color: #f4f7fb; }
-      main { max-width: 1000px; margin: 0 auto; }
-      section { margin: 1rem 0; padding: 1rem; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; background: rgba(255,255,255,0.06); }
-      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9rem; }
-      .page-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
-      .page-card { border: 1px solid rgba(255,255,255,0.22); border-radius: 8px; padding: 10px; background: rgba(0,0,0,0.15); }
-      .row { display: flex; gap: 10px; align-items: center; margin: 6px 0; }
-      .row label { flex: 1; }
-      select, input[type="text"], input[type="url"], textarea, input[type="number"] { width: 100%; }
-      .time-settings { margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.2); }
-      button { margin-right: 0.5rem; margin-top: 8px; }
+      :root {
+        --bg: radial-gradient(circle at 0% 0%, #20345e 0%, #0b132b 35%, #070b18 100%);
+        --panel: rgba(255, 255, 255, 0.08);
+        --panel-strong: rgba(255, 255, 255, 0.12);
+        --border: rgba(255, 255, 255, 0.2);
+        --text: #f4f7fb;
+        --muted: #bed0e8;
+        --accent: #8be9fd;
+        --ok: #7de07d;
+        --warn: #ffd166;
+        --font-body: "Segoe UI", "Helvetica Neue", sans-serif;
+        --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+        --card-radius: 12px;
+        --control-radius: 8px;
+        font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+      }
+
+      * { box-sizing: border-box; }
+      body { margin: 0; padding: 1.5rem; background: var(--bg); color: var(--text); font-family: var(--font-body); }
+      main { max-width: 1100px; margin: 0 auto; display: grid; gap: 1rem; }
+      h1 { margin: 0 0 0.25rem; }
+      p.helper { margin: 0; color: var(--muted); }
+
+      section {
+        margin: 0;
+        padding: 1rem;
+        border: 1px solid var(--border);
+        border-radius: var(--card-radius);
+        background: var(--panel);
+        backdrop-filter: blur(4px);
+      }
+
+      .section-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+      }
+
+      .section-head h2 { margin: 0; }
+      .section-note { color: var(--muted); font-size: 0.92rem; }
+      .mono { font-family: var(--font-mono); font-size: 0.88rem; }
+
+      .row { display: flex; gap: 0.6rem; align-items: center; margin: 0.5rem 0; flex-wrap: wrap; }
+      .row label { flex: 1; min-width: 180px; }
+      .stack { display: grid; gap: 0.55rem; margin-top: 0.6rem; }
+
+      input[type="text"], input[type="url"], input[type="number"], select, textarea {
+        width: 100%;
+        margin-top: 0.3rem;
+        padding: 0.48rem 0.55rem;
+        border-radius: var(--control-radius);
+        border: 1px solid var(--border);
+        background: rgba(6, 10, 25, 0.8);
+        color: var(--text);
+      }
+
+      button {
+        border: 1px solid var(--border);
+        background: rgba(9, 16, 38, 0.9);
+        color: var(--text);
+        border-radius: var(--control-radius);
+        padding: 0.48rem 0.7rem;
+        cursor: pointer;
+      }
+      button:hover { border-color: var(--accent); }
+      button.ghost { background: transparent; }
+      button.copy-btn { min-width: 66px; }
+      button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+      .url-grid { display: grid; gap: 0.55rem; margin-top: 0.75rem; }
+      .url-row {
+        display: grid;
+        grid-template-columns: 155px 1fr auto;
+        gap: 0.5rem;
+        align-items: center;
+      }
+      .url-row strong { color: var(--muted); font-size: 0.85rem; }
+
+      .tier-list { list-style: none; margin: 0.7rem 0 0; padding: 0; display: grid; gap: 0.45rem; }
+      .tier-item {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 0.55rem;
+        align-items: center;
+        border: 1px solid var(--border);
+        border-radius: var(--control-radius);
+        padding: 0.45rem;
+        background: rgba(0, 0, 0, 0.16);
+      }
+      .tier-item.drag-over { outline: 2px dashed var(--accent); }
+      .tier-handle { cursor: grab; user-select: none; padding: 0.2rem 0.4rem; border: 1px dashed var(--border); border-radius: var(--control-radius); }
+      .tier-controls { display: flex; gap: 0.35rem; }
+      .add-tier-panel { display: none; margin-top: 0.6rem; }
+      .add-tier-panel.open { display: block; }
+
+      .page-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; margin-top: 0.7rem; }
+      .page-card { border: 1px solid var(--border); border-radius: var(--card-radius); padding: 0.7rem; background: rgba(0, 0, 0, 0.2); }
+      .page-card h3 { margin: 0 0 0.35rem; }
+      .pill { display: inline-block; border: 1px solid var(--border); border-radius: 100px; padding: 0.1rem 0.45rem; font-size: 0.78rem; margin-right: 0.25rem; }
+      .pill.locked { color: var(--warn); border-color: var(--warn); }
+
       .preview-card { line-height: 1.5; }
-      .preview-highlight { color: #ffd166; font-weight: 600; }
+      .preview-highlight { color: var(--accent); font-weight: 600; }
+      .status-ok { color: var(--ok); }
+
+      @media (max-width: 840px) {
+        body { padding: 0.8rem; }
+        .url-row { grid-template-columns: 1fr; }
+      }
     </style>
   </head>
   <body>
     <main>
       <h1>Display Orchestrator Settings</h1>
+      <p class="helper">Configure displays, tier priority, playlist behavior, and page-level controls from one place.</p>
 
       <section>
-        <h2>Display Registry</h2>
+        <div class="section-head">
+          <h2>Display Registry</h2>
+          <span class="section-note">Pick a display, then copy its ready-to-paste URLs.</span>
+        </div>
         <div class="row">
           <label>Select Display
             <select id="displaySelector"></select>
@@ -46,23 +147,43 @@
           </label>
           <button id="sharePlaylist" type="button">Share Playlist With Another Display</button>
         </div>
-        <div id="displayUrls" class="mono"></div>
+        <div id="displayUrls" class="url-grid"></div>
       </section>
 
       <section>
-        <h2>Tier Manager</h2>
-        <p class="mono">Tier 0 is locked as Emergency Tier. Drag tiers to reorder remaining priorities.</p>
-        <ul id="tierList" class="mono"></ul>
+        <div class="section-head">
+          <h2>Tier Manager</h2>
+          <span class="section-note">Name tiers for clarity and drag by handle to reorder.</span>
+        </div>
         <div class="row">
-          <label>Add Tier
-            <input id="newTierValue" type="number" min="1" step="1" placeholder="6" />
+          <label>Playlist Order
+            <select id="playlistOrderMode">
+              <option value="priority">Tier Priority</option>
+              <option value="shuffle">Shuffle Enabled Pages</option>
+            </select>
           </label>
-          <button id="addTier" type="button">Add Tier</button>
+          <button id="shuffleNow" type="button">Shuffle Now</button>
+        </div>
+        <ul id="tierList" class="tier-list mono"></ul>
+        <div class="row">
+          <button id="openAddTier" type="button">+ Add Tier</button>
+        </div>
+        <div id="addTierPanel" class="add-tier-panel">
+          <div class="row">
+            <label>Tier Name
+              <input id="newTierName" type="text" placeholder="Morning Announcements" />
+            </label>
+            <button id="confirmAddTier" type="button">Create Tier</button>
+            <button id="cancelAddTier" type="button" class="ghost">Cancel</button>
+          </div>
         </div>
       </section>
 
       <section>
-        <h2>Per-Page Controls</h2>
+        <div class="section-head">
+          <h2>Per-Page Controls</h2>
+          <span class="section-note">Use Basics for daily edits and expand Advanced only when needed.</span>
+        </div>
         <label><input id="showDeletedPages" type="checkbox" /> Show Deleted Pages</label>
         <div id="pageSettingsCards" class="page-grid"></div>
       </section>
