@@ -9,6 +9,10 @@
         --bg: radial-gradient(circle at 0% 0%, #20345e 0%, #0b132b 35%, #070b18 100%);
         --panel: rgba(255, 255, 255, 0.08);
         --panel-strong: rgba(255, 255, 255, 0.12);
+        --control-bg: rgba(6, 10, 25, 0.8);
+        --button-bg: rgba(9, 16, 38, 0.9);
+        --tier-bg: rgba(0, 0, 0, 0.16);
+        --page-card-bg: rgba(0, 0, 0, 0.2);
         --border: rgba(255, 255, 255, 0.2);
         --text: #f4f7fb;
         --muted: #bed0e8;
@@ -59,13 +63,13 @@
         padding: 0.48rem 0.55rem;
         border-radius: var(--control-radius);
         border: 1px solid var(--border);
-        background: rgba(6, 10, 25, 0.8);
+        background: var(--control-bg);
         color: var(--text);
       }
 
       button {
         border: 1px solid var(--border);
-        background: rgba(9, 16, 38, 0.9);
+        background: var(--button-bg);
         color: var(--text);
         border-radius: var(--control-radius);
         padding: 0.48rem 0.7rem;
@@ -94,7 +98,7 @@
         border: 1px solid var(--border);
         border-radius: var(--control-radius);
         padding: 0.45rem;
-        background: rgba(0, 0, 0, 0.16);
+        background: var(--tier-bg);
       }
       .tier-item.drag-over { outline: 2px dashed var(--accent); }
       .tier-handle { cursor: grab; user-select: none; padding: 0.2rem 0.4rem; border: 1px dashed var(--border); border-radius: var(--control-radius); }
@@ -103,7 +107,7 @@
       .add-tier-panel.open { display: block; }
 
       .page-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; margin-top: 0.7rem; }
-      .page-card { border: 1px solid var(--border); border-radius: var(--card-radius); padding: 0.7rem; background: rgba(0, 0, 0, 0.2); }
+      .page-card { border: 1px solid var(--border); border-radius: var(--card-radius); padding: 0.7rem; background: var(--page-card-bg); }
       .page-card h3 { margin: 0 0 0.35rem; }
       .pill { display: inline-block; border: 1px solid var(--border); border-radius: 100px; padding: 0.1rem 0.45rem; font-size: 0.78rem; margin-right: 0.25rem; }
       .pill.locked { color: var(--warn); border-color: var(--warn); }

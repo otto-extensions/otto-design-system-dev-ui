@@ -105,6 +105,11 @@ function applyDevUiContract(contract) {
 
   if (colors.bg) root.style.setProperty('--bg', colors.bg);
   if (colors.panel) root.style.setProperty('--panel', colors.panel);
+  if (colors.panelStrong) root.style.setProperty('--panel-strong', colors.panelStrong);
+  if (colors.controlBg) root.style.setProperty('--control-bg', colors.controlBg);
+  if (colors.buttonBg) root.style.setProperty('--button-bg', colors.buttonBg);
+  if (colors.tierBg) root.style.setProperty('--tier-bg', colors.tierBg);
+  if (colors.pageCardBg) root.style.setProperty('--page-card-bg', colors.pageCardBg);
   if (colors.border) root.style.setProperty('--border', colors.border);
   if (colors.text) root.style.setProperty('--text', colors.text);
   if (colors.muted) root.style.setProperty('--muted', colors.muted);
