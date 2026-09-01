@@ -6,6 +6,7 @@ const shareSourceDisplayEl = document.getElementById('shareSourceDisplay');
 const shareTargetDisplayEl = document.getElementById('shareTargetDisplay');
 const showDeletedToggleEl = document.getElementById('showDeletedPages');
 const displayUrlsEl = document.getElementById('displayUrls');
+const providerCardsEl = document.getElementById('providerConfigCards');
 const playlistOrderModeEl = document.getElementById('playlistOrderMode');
 const addTierPanelEl = document.getElementById('addTierPanel');
 const newTierNameEl = document.getElementById('newTierName');
@@ -19,7 +20,11 @@ const state = {
   playlistOrder: 'priority',
   manualPageOrder: [],
   displays: ['hallway'],
-  deletedDisplays: {}
+  deletedDisplays: {},
+  providers: {
+    microsoft: { providerId: 'microsoft', name: 'Microsoft Outlook', isConfigured: false, isAuthenticated: false, error: 'No OAuth credentials configured', clientId: '' },
+    google: { providerId: 'google', name: 'Google Calendar', isConfigured: false, isAuthenticated: false, error: 'No OAuth credentials configured', clientId: '' }
+  }
 };
 
 function setStatus(message) {
@@ -161,6 +166,11 @@ async function fetchDisplays() {
   };
 }
 
+async function fetchProviderConfigs() {
+  const payload = await csl('calendar.get.provider.config', {});
+  return Array.isArray(payload) ? payload : [];
+}
+
 function renderDisplayRegistry() {
   const options = state.displays.map((displayId) => {
     const selected = displayId === state.displayId ? 'selected' : '';
@@ -192,6 +202,52 @@ function renderDisplayRegistry() {
       <button class="copy-btn" type="button" data-action="copy-url" data-url="${escapeHtml(entry.value)}">Copy</button>
     </div>
   `).join('') + (deleted ? `<div style="margin-top:0.4rem">${deleted}</div>` : '');
+}
+
+function renderProviderConfigCards() {
+  if (!providerCardsEl) {
+    return;
+  }
+
+  providerCardsEl.innerHTML = Object.entries(state.providers).map(([providerId, provider]) => `
+    <div class="page-card">
+      <h3>${escapeHtml(provider.name)}</h3>
+      <div class="stack">
+        <label>Client ID
+          <input id="provider-${providerId}-client-id" type="text" placeholder="OAuth Client ID" value="${escapeHtml(provider.clientId || '')}" />
+        </label>
+        <label>Client Secret
+          <input id="provider-${providerId}-client-secret" type="password" placeholder="OAuth Client Secret" />
+        </label>
+        <div>
+          <button type="button" data-action="save-provider" data-provider-id="${escapeHtml(providerId)}">Save Credentials</button>
+        </div>
+        <p style="color: ${provider.isConfigured ? 'var(--ok)' : 'var(--muted)'};">${provider.isConfigured ? 'Configured' : 'Not configured'}</p>
+        <p style="color: ${provider.isAuthenticated ? 'var(--ok)' : 'var(--warn)'};">${provider.isAuthenticated ? 'Authenticated' : 'Not authenticated'}</p>
+        ${provider.error ? `<p style="color: var(--warn);">${escapeHtml(provider.error)}</p>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+async function saveProviderCredentials(providerId) {
+  const clientIdEl = document.getElementById(`provider-${providerId}-client-id`);
+  const clientSecretEl = document.getElementById(`provider-${providerId}-client-secret`);
+  const clientId = String(clientIdEl?.value || '').trim();
+  const clientSecret = String(clientSecretEl?.value || '').trim();
+
+  if (!clientId || !clientSecret) {
+    throw new Error('Client ID and Client Secret are required');
+  }
+
+  const result = await csl('calendar.set.provider.config', {
+    providerId,
+    clientId,
+    clientSecret
+  });
+
+  await refreshAll();
+  setStatus(result?.message || `Credentials saved for ${providerId}`);
 }
 
 function tierBadge(pageSettings) {
@@ -741,6 +797,24 @@ function bindGlobalEvents() {
     }
   });
 
+  providerCardsEl?.addEventListener('click', async (event) => {
+    const action = event.target?.dataset?.action;
+    if (action !== 'save-provider') {
+      return;
+    }
+
+    const providerId = event.target?.dataset?.providerId;
+    if (!providerId) {
+      return;
+    }
+
+    try {
+      await saveProviderCredentials(providerId);
+    } catch (error) {
+      setStatus(String(error));
+    }
+  });
+
   tierListEl.addEventListener('click', async (event) => {
     const action = event.target.dataset.action;
     const tier = Number(event.target.dataset.tier);
@@ -975,11 +1049,12 @@ function bindGlobalEvents() {
 
 async function refreshAll() {
   setStatus('Loading...');
-  const [displayRegistry, settings, pages, tierList] = await Promise.all([
+  const [displayRegistry, settings, pages, tierList, providerConfigs] = await Promise.all([
     fetchDisplays(),
     fetchSettings(),
     fetchPages(),
-    fetchTierList()
+    fetchTierList(),
+    fetchProviderConfigs()
   ]);
 
   state.displays = displayRegistry.displays;
@@ -990,9 +1065,19 @@ async function refreshAll() {
   state.tierNames = normalizeTierNames(settings.tierNames, tierList);
   state.playlistOrder = settings.playlistOrder === 'shuffle' ? 'shuffle' : 'priority';
   state.manualPageOrder = normalizeManualOrder(settings.manualPageOrder, pages);
+  for (const providerConfig of providerConfigs) {
+    if (providerConfig && providerConfig.providerId && state.providers[providerConfig.providerId]) {
+      state.providers[providerConfig.providerId] = {
+        ...state.providers[providerConfig.providerId],
+        ...providerConfig,
+        clientId: providerConfig.clientId || state.providers[providerConfig.providerId].clientId || ''
+      };
+    }
+  }
   playlistOrderModeEl.value = state.playlistOrder;
 
   renderDisplayRegistry();
+  renderProviderConfigCards();
   renderTierList();
   renderPageCards(pages, settings);
   await refreshPreview();
