@@ -168,7 +168,9 @@ async function fetchDisplays() {
 
 async function fetchProviderConfigs() {
   const payload = await csl('calendar.get.provider.config', {});
-  return Array.isArray(payload) ? payload : [];
+  if (Array.isArray(payload)) return payload;
+  if (payload && Array.isArray(payload.value)) return payload.value;
+  return [];
 }
 
 function renderDisplayRegistry() {
@@ -221,6 +223,7 @@ function renderProviderConfigCards() {
         </label>
         <div>
           <button type="button" data-action="save-provider" data-provider-id="${escapeHtml(providerId)}">Save Credentials</button>
+          <button type="button" data-action="authenticate-provider" data-provider-id="${escapeHtml(providerId)}" ${provider.isConfigured ? '' : 'disabled'}>Authenticate</button>
         </div>
         <p style="color: ${provider.isConfigured ? 'var(--ok)' : 'var(--muted)'};">${provider.isConfigured ? 'Configured' : 'Not configured'}</p>
         <p style="color: ${provider.isAuthenticated ? 'var(--ok)' : 'var(--warn)'};">${provider.isAuthenticated ? 'Authenticated' : 'Not authenticated'}</p>
@@ -248,6 +251,29 @@ async function saveProviderCredentials(providerId) {
 
   await refreshAll();
   setStatus(result?.message || `Credentials saved for ${providerId}`);
+}
+
+async function authenticateProvider(providerId) {
+  try {
+    setStatus(`Authenticating ${state.providers[providerId].name}...`);
+    const result = await csl('auth.get.token', {
+      providerId
+    });
+    
+    if (result && result.token) {
+      state.providers[providerId].isAuthenticated = true;
+      state.providers[providerId].error = null;
+      await refreshAll();
+      setStatus(`Successfully authenticated ${state.providers[providerId].name}`);
+    } else {
+      throw new Error('No token received from authentication');
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    setStatus(`Authentication failed: ${message}`);
+    state.providers[providerId].error = message;
+    renderProviderConfigCards();
+  }
 }
 
 function tierBadge(pageSettings) {
@@ -799,19 +825,24 @@ function bindGlobalEvents() {
 
   providerCardsEl?.addEventListener('click', async (event) => {
     const action = event.target?.dataset?.action;
-    if (action !== 'save-provider') {
-      return;
-    }
-
     const providerId = event.target?.dataset?.providerId;
+
     if (!providerId) {
       return;
     }
 
-    try {
-      await saveProviderCredentials(providerId);
-    } catch (error) {
-      setStatus(String(error));
+    if (action === 'save-provider') {
+      try {
+        await saveProviderCredentials(providerId);
+      } catch (error) {
+        setStatus(String(error));
+      }
+    } else if (action === 'authenticate-provider') {
+      try {
+        await authenticateProvider(providerId);
+      } catch (error) {
+        setStatus(String(error));
+      }
     }
   });
 
