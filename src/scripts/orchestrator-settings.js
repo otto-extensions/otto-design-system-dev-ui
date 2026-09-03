@@ -253,21 +253,89 @@ async function saveProviderCredentials(providerId) {
   setStatus(result?.message || `Credentials saved for ${providerId}`);
 }
 
+function createOAuthState(providerId) {
+  const random = Array.from(crypto.getRandomValues(new Uint8Array(12)))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+  return `${providerId}:${Date.now()}:${random}`;
+}
+
+async function waitForOAuthResult(providerId, expectedState, timeoutMs = 300000) {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      window.removeEventListener('message', onMessage);
+      reject(new Error('OAuth authentication timed out after 5 minutes'));
+    }, timeoutMs);
+
+    function onMessage(event) {
+      const data = event?.data;
+      if (!data || data.type !== 'OTTO_OAUTH_CALLBACK') return;
+      if (data.provider !== providerId) return;
+
+      if (data.status === 'success' && expectedState && data.state !== expectedState) {
+        clearTimeout(timeout);
+        window.removeEventListener('message', onMessage);
+        reject(new Error('OAuth state mismatch. Please try again.'));
+        return;
+      }
+
+      clearTimeout(timeout);
+      window.removeEventListener('message', onMessage);
+      if (data.status === 'success') {
+        resolve(data);
+      } else {
+        reject(new Error(data.error || 'OAuth callback failed'));
+      }
+    }
+
+    window.addEventListener('message', onMessage);
+  });
+}
+
+function buildAuthorizationUrl(providerId, clientId, stateToken) {
+  const redirectUri = `${window.location.origin}/oauth/callback?provider=${encodeURIComponent(providerId)}`;
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    state: stateToken,
+    prompt: 'select_account'
+  });
+
+  if (providerId === 'microsoft') {
+    params.set('scope', 'offline_access openid profile email User.Read Calendars.Read');
+    return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${params.toString()}`;
+  }
+
+  if (providerId === 'google') {
+    params.set('scope', 'openid email profile https://www.googleapis.com/auth/calendar.readonly');
+    params.set('access_type', 'offline');
+    params.set('include_granted_scopes', 'true');
+    return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+  }
+
+  throw new Error('Unsupported provider');
+}
+
 async function authenticateProvider(providerId) {
   try {
-    setStatus(`Authenticating ${state.providers[providerId].name}...`);
-    const result = await csl('auth.get.token', {
-      providerId
-    });
-    
-    if (result && result.token) {
-      state.providers[providerId].isAuthenticated = true;
-      state.providers[providerId].error = null;
-      await refreshAll();
-      setStatus(`Successfully authenticated ${state.providers[providerId].name}`);
-    } else {
-      throw new Error('No token received from authentication');
+    const provider = state.providers[providerId];
+    if (!provider?.isConfigured || !provider.clientId) {
+      throw new Error('Configure provider credentials before authenticating');
     }
+
+    const stateToken = createOAuthState(providerId);
+    const authUrl = buildAuthorizationUrl(providerId, provider.clientId, stateToken);
+    const popup = window.open(authUrl, 'otto-oauth-auth', 'popup=yes,width=560,height=760');
+    if (!popup) {
+      throw new Error('Pop-up blocked. Please allow pop-ups and try again.');
+    }
+
+    setStatus(`Waiting for ${provider.name} OAuth callback...`);
+    await waitForOAuthResult(providerId, stateToken);
+
+    await refreshAll();
+    setStatus(`Successfully authenticated ${provider.name}`);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     setStatus(`Authentication failed: ${message}`);
